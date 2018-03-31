@@ -92,8 +92,7 @@ class WikipediaArticle(Document):
         """
         return self._text
 
-class AnalyseQuery():
-
+class FilterWords():
     def shouldBeIncluded(feature):
         if feature[0] == '名詞':
             if feature[1] == 'サ変接続' or feature[1] == '一般' or feature[1] == '形容動詞語幹' or feature[1] == '固有名詞' or feature[1] == '数':
@@ -109,17 +108,30 @@ class AnalyseQuery():
     def excludeParticles(features):
         return features[0] != '助詞'
 
+class AnalyseQuery():
+
+    def extractWords(self, query, func = FilterWords.shouldBeIncluded):
+        parser = natto.MeCab()
+        terms = []
+        for node in parser.parse(query, as_nodes=True):
+            if node.is_nor():
+                features = node.feature.split(',')
+                # if features[0] != '助詞':
+                if func(features):
+                    terms.append(features[6] if len(features) == 9 else node.surface)
+        return terms
+
 class Index():
 
     def __init__(self, filename, collection):
         self.db = sqlite3.connect(filename)
         self.collection = collection
 
-    def search(self, query, func = AnalyseQuery.shouldBeIncluded):
+    def search(self, query, func = FilterWords.shouldBeIncluded):
         c = self.db.cursor()
 
         # search process
-        terms = self.extractWords(query, func)
+        terms = AnalyseQuery.extractWords(query, func)
         print("extractWords Done")
 
         # titles which apeare len(query) times are the rets
@@ -183,10 +195,10 @@ class Index():
         print("all terms searched") 
         return titles
 
-    def sortSearch(self, query, func = AnalyseQuery.shouldBeIncluded):
+    def sortSearch(self, query, func = FilterWords.shouldBeIncluded):
         c = self.db.cursor()
 
-        terms = self.extractWords(query, func)
+        terms = AnalyseQuery.extractWords(query, func)
         documentVectors = {}
         defaultVector = []
         for n, term in enumerate(terms):
@@ -212,18 +224,6 @@ class Index():
                 max_cos = cos
                 best_title = title
         return best_title
-
-
-    def extractWords(self, query, func = AnalyseQuery.shouldBeIncluded):
-        parser = natto.MeCab()
-        terms = []
-        for node in parser.parse(query, as_nodes=True):
-            if node.is_nor():
-                features = node.feature.split(',')
-                # if features[0] != '助詞':
-                if func(features):
-                    terms.append(features[6] if len(features) == 9 else node.surface)
-        return terms
 
     def generate(self):
         # indexing process
