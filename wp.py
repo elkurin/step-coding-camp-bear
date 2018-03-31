@@ -100,11 +100,11 @@ class Index():
         # search process
         c = self.db.cursor()
         parser = natto.MeCab()
-		terms = []
-		for node in parser.parse(query, as_nodes=True):
-			features = node.feature.split(',')
-			if features[0] != '助詞':
-				terms.append(features[6] if len(features) == 9 else node.surface)
+        terms = []
+        for node in parser.parse(query, as_nodes=True):
+            features = node.feature.split(',')
+            if features[0] != '助詞':
+                terms.append(features[6] if len(features) == 9 else node.surface)
 
         # titles which apeare len(query) times are the rets
         titles = []
@@ -166,7 +166,6 @@ class Index():
 
         c.execute("""CREATE INDEX IF NOT EXISTS termindexs ON postings(term, document_id);""")
         self.db.commit()
-
 
 
 class WikipediaCollection(Collection):
