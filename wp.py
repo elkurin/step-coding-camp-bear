@@ -146,11 +146,17 @@ class Index():
             count += 1
             if count > 100:
                 break
+
+            dict = {}
             for node in parser.parse(article.text(), as_nodes=True):
                 features = node.feature.split(',')
                 term = features[6] if len(features) == 9 else node.surface
                 if shouldBeIncluded(features):
-                    c.execute("INSERT INTO postings VALUES(?, ?)", (term, article.id(),))
+                    if term in dict:
+                        pass
+                    else:
+                        dict[term] = True
+                        c.execute("INSERT INTO postings VALUES(?, ?)", (term, article.id(),))
 
         c.execute("""CREATE INDEX IF NOT EXISTS termindexs ON postings(term, document_id);""")
         self.db.commit()
