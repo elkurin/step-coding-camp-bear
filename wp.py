@@ -103,8 +103,9 @@ class Index():
         terms = []
         for node in parser.parse(query, as_nodes=True):
             features = node.feature.split(',')
-            if features[0] != '助詞':
-                terms.append(features[6] if len(features) == 9 else node.surface)
+            if node.is_nor():
+                if features[0] != '助詞':
+                    terms.append(features[6] if len(features) == 9 else node.surface)
 
         # titles which apeare len(query) times are the rets
         titles = []
@@ -158,13 +159,14 @@ class Index():
 
             dict = {}
             for node in parser.parse(article.text(), as_nodes=True):
-                features = node.feature.split(',')
-                term = features[6] if len(features) == 9 else node.surface
-                if shouldBeIncluded(features):
-                    if term in dict:
-                        dict[term] += 1
-                    else:
-                        dict[term] = 1
+                if node.is_nor():
+                    features = node.feature.split(',')
+                    term = features[6] if len(features) == 9 else node.surface
+                    if shouldBeIncluded(features):
+                        if term in dict:
+                            dict[term] += 1
+                        else:
+                            dict[term] = 1
             for term in dict.keys():
                 c.execute("INSERT INTO postings VALUES(?, ?, ?)", (term, article.id(), dict[term],))
 
