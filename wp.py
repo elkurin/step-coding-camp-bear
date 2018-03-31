@@ -104,7 +104,7 @@ class Index():
         titles = []
         dict = {}
         for term in query:
-            cands += c.execute("SELECT titles FROM popstings WHERE termindex=?", (term,)).fetchone()
+            cands += c.execute("SELECT titles FROM termindexs WHERE term=?", (term,)).fetchone()
             for cand in cands:
                 if cand in dict:
                         dict[cand] += 1
@@ -152,7 +152,7 @@ class Index():
                 if shouldBeIncluded(features):
                     c.execute("INSERT INTO postings VALUES(?, ?)", (term, article.id(),))
 
-        c.execute("""CREATE UNIQUE INDEX termindex ON postings(document_id);""")
+        c.execute("""CREATE INDEX IF NOT EXISTS termindexs ON postings(term, document_id);""")
         self.db.commit()
 
 
