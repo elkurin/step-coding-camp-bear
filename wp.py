@@ -93,6 +93,7 @@ class WikipediaArticle(Document):
         return self._text
 
 class AnalyseQuery():
+
     def shouldBeIncluded(feature):
         if feature[0] == '名詞':
             if feature[1] == 'サ変接続' or feature[1] == '一般' or feature[1] == '形容動詞語幹' or feature[1] == '固有名詞' or feature[1] == '数':
@@ -149,6 +150,39 @@ class Index():
         print("all terms searched") 
         return titles
 
+    def searchList(self, terms):
+        c = self.db.cursor()
+
+        # search process
+
+        # titles which apeare len(query) times are the rets
+        titles = []
+        flag = True
+        for term in terms:
+            cands = c.execute("SELECT document_id FROM postings WHERE term=?", (term,)).fetchall()
+            if cands == None:
+                continue
+            """
+            for cand in cands:
+                if cand[0] in dict:
+                    dict[cand[0]] += 1
+                else:
+                    dict[cand[0]] = 1
+                if dict[cand[0]] == len(terms):
+                    titles.append(cand[0])
+            """
+
+            temptitles = set(map(lambda c:c[0], cands))
+
+            if flag:
+                titles = temptitles
+                flag = False
+            else:
+                titles = titles & temptitles
+
+        print("all terms searched") 
+        return titles
+
     def sortSearch(self, query, func = AnalyseQuery.shouldBeIncluded):
         c = self.db.cursor()
 
@@ -156,7 +190,7 @@ class Index():
         documentVectors = {}
         defaultVector = []
         for n, term in enumerate(terms):
-            cands = c.execute("SELECT document_id, times FROM postings WHERE term=?", (term,)).fetchall()
+            cands = c.execute("SELECT document_id FROM postings WHERE term=?", (term,)).fetchall()
             termPoint = (1 + math.log(len(cands)) * math.log(self.collection.num_documents() / len(cands)))
             defaultVector.append(termPoint)
 
@@ -180,7 +214,7 @@ class Index():
         return best_title
 
 
-    def extractWords(self, query, func):
+    def extractWords(self, query, func = AnalyseQuery.shouldBeIncluded):
         parser = natto.MeCab()
         terms = []
         for node in parser.parse(query, as_nodes=True):
@@ -220,7 +254,7 @@ class Index():
             for term in dict.keys():
                 c.execute("INSERT INTO postings VALUES(?, ?, ?)", (term, article.id(), dict[term],))
 
-        c.execute("""CREATE INDEX IF NOT EXISTS termindexs ON postings(term, document_id, times);""")
+        c.execute("""CREATE INDEX IF NOT EXISTS termindexs ON postings(term, document_id);""")
         self.db.commit()
 
 

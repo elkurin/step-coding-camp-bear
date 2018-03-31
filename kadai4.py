@@ -6,19 +6,46 @@ import os
 collection = wp.WikipediaCollection("./data/wp.db")
 index = wp.Index("./data/index2.db", collection)
 
+gameEnd = False
+wordsState = []
+
 @bottle.route('/action')
 def action():
-   query = bottle.request.query.q
-   title = index.sortSearch(query)
-   bottle.response.content_type = 'application/json'
-   if title is None:
-       return json.dums({
-           'textToSpeech': 'はい残念みつからないよー'
-           }, index=2, separators = (',', ':'),
-           ensure_ascii = False)
-   return json.dumps({
-       'textToSpeech': title
-   }, indent=2, separators=(',', ': '), ensure_ascii=False)
+    global wordsState, gameEnd
+    query = bottle.request.query.q
+    if gameEnd:
+        if query == 'はい':
+            gameEnd = False
+            return json.dumps({
+                'textToSpeach': 'ゲームを始めるよ'
+            }, index=2, separators=(',', ':'), ensure_ascii=False)
+        else:
+            return json.dumps({
+                'textToSpeach': '聞こえないよ？'
+            }, index=2, separators=(',', ':'), ensure_ascii=False)
+            
+
+    """
+    if len(wordsState) == 0:
+        return json.dumps({
+          'textToSpeach': 'ゲームを始めるよ'
+          }, index=2, separators = (',', ':'),
+          ensure_ascii = False)
+    else:
+    """
+    terms = index.extractWords(query)
+    wordsState += terms
+    titles = index.searchList(wordsState)
+    bottle.response.content_type = 'application/json'
+    if len(titles) == 0:
+        wordsState = []
+        gameEnd = True
+        return json.dumps({
+            'textToSpeech': '記事が見つかりませんでした。あなたの負けー。もう一度遊びますか'
+        }, indent=2, separators=(',', ': '), ensure_ascii=False)
+    return json.dumps({
+         'textToSpeech': '記事が{}件見つかりました。今言われた単語は{}です'.format(len(titles), 'と'.join(wordsState))
+    }, indent=2, separators=(',', ': '), ensure_ascii=False)
 
 
 @bottle.route('/article/<title>')
