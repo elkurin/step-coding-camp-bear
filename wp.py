@@ -115,7 +115,7 @@ class Index():
 
         articles = []
         for title in titles:
-            article = WikipediaCollection("./data/wp.db").find_article_by_title(title)
+            article = collection.find_article_by_title(title)
             articles.append(article)
         
         return articles
@@ -136,7 +136,7 @@ class Index():
 
         parser = natto.MeCab()
         dict = {}
-        articles = WikipediaCollection("./data/wp.db").get_all_documents()
+        articles = collection.get_all_documents()
         for article in articles:
             for node in parser.parse(article.wiki_text, as_nodes=True):
                 term = node.surface
