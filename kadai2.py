@@ -11,7 +11,7 @@ def action():
    query = bottle.request.query.q
    titles = index.search(query)
    bottle.response.content_type = 'application/json'
-   if articles is None:
+   if titles is None:
        return json.dums({
            'textToSpeech': '404 Not Found'
            }, index=2, separators = (',', ':'),

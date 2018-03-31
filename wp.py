@@ -100,7 +100,7 @@ class Index():
         c = self.db.cursor()
 
         # search process
-        terms = extractWords(query)
+        terms = self.extractWords(query)
 
         # titles which apeare len(query) times are the rets
         titles = []
@@ -127,7 +127,7 @@ class Index():
     def sortSearch(self, query):
         c = self.db.cursor()
 
-        terms = extractWords(query)
+        terms = self.extractWords(query)
         titles = []
         dict = {}
         for term in terms:
@@ -140,7 +140,7 @@ class Index():
 
 
     def extractWords(self, query):
-        parser = natto.Mecab()
+        parser = natto.MeCab()
         terms = []
         for node in parser.parse(query, as_nodes=True):
             if node.is_nor():
