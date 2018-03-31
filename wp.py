@@ -127,11 +127,10 @@ class Index():
         self.db = sqlite3.connect(filename)
         self.collection = collection
 
-    def search(self, query, func = FilterWords.shouldBeIncluded):
+    def search(self, terms):
         c = self.db.cursor()
 
         # search process
-        terms = AnalyseQuery.extractWords(query, func)
         print("extractWords Done")
 
         # titles which apeare len(query) times are the rets
@@ -162,43 +161,9 @@ class Index():
         print("all terms searched") 
         return titles
 
-    def searchList(self, terms):
+    def sortSearch(self, terms):
         c = self.db.cursor()
 
-        # search process
-
-        # titles which apeare len(query) times are the rets
-        titles = []
-        flag = True
-        for term in terms:
-            cands = c.execute("SELECT document_id FROM postings WHERE term=?", (term,)).fetchall()
-            if cands == None:
-                continue
-            """
-            for cand in cands:
-                if cand[0] in dict:
-                    dict[cand[0]] += 1
-                else:
-                    dict[cand[0]] = 1
-                if dict[cand[0]] == len(terms):
-                    titles.append(cand[0])
-            """
-
-            temptitles = set(map(lambda c:c[0], cands))
-
-            if flag:
-                titles = temptitles
-                flag = False
-            else:
-                titles = titles & temptitles
-
-        print("all terms searched") 
-        return titles
-
-    def sortSearch(self, query, func = FilterWords.shouldBeIncluded):
-        c = self.db.cursor()
-
-        terms = AnalyseQuery.extractWords(query, func)
         documentVectors = {}
         defaultVector = []
         for n, term in enumerate(terms):

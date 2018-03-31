@@ -5,11 +5,13 @@ import os
 
 collection = wp.WikipediaCollection("./data/wp.db")
 index = wp.Index("./data/index2.db", collection)
+analyse = wp.AnalyseQuery()
 
 @bottle.route('/action')
 def action():
    query = bottle.request.query.q
-   title = index.sortSearch(query)
+   terms = analyse.extractWords(query)
+   title = index.sortSearch(terms)
    bottle.response.content_type = 'application/json'
    if title is None:
        return json.dums({

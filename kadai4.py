@@ -29,7 +29,7 @@ def action():
 
     terms = analyse.extractWords(query)
     wordsState += terms
-    titles = index.searchList(wordsState)
+    titles = index.search(wordsState)
     if len(titles) == 0:
         wordsState = []
         gameEnd = True
