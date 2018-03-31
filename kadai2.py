@@ -9,7 +9,7 @@ index = wp.Index("./data/index.db", collection)
 @bottle.route('/action')
 def action():
    query = bottle.request.query.q
-   articles = index.search(query)
+   titles = index.search(query)
    bottle.response.content_type = 'application/json'
    if articles is None:
        return json.dums({
@@ -17,7 +17,7 @@ def action():
            }, index=2, separators = (',', ':'),
            ensure_ascii = False)
    return json.dumps({
-       'textToSpeech': 'か'.join(articles)
+       'textToSpeech': 'か'.join(titles)
    }, indent=2, separators=(',', ': '), ensure_ascii=False)
 
 

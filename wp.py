@@ -97,37 +97,57 @@ class Index():
         self.collection = collection
 
     def search(self, query):
-        # search process
         c = self.db.cursor()
-        parser = natto.MeCab()
-        terms = []
-        for node in parser.parse(query, as_nodes=True):
-            features = node.feature.split(',')
-            if node.is_nor():
-                if features[0] != '助詞':
-                    terms.append(features[6] if len(features) == 9 else node.surface)
+
+        # search process
+        terms = extractWords(query)
 
         # titles which apeare len(query) times are the rets
         titles = []
         dict = {}
         for term in terms:
-            cands = c.execute("SELECT document_id FROM postings WHERE term=?", (term,)).fetchone()
+            cands = c.execute("SELECT document_id FROM postings WHERE term=?", (term,)).fetchall()
             if cands == None:
                 continue
             for cand in cands:
-                if cand in dict:
-                    dict[cand] += 1
+                if cand[0] in dict:
+                    dict[cand[0]] += 1
                 else:
-                    dict[cand] = 1
-                if dict[cand] == len(query):
-                    titles.append(cand)
+                    dict[cand[0]] = 1
+                if dict[cand[0]] == len(terms):
+                    titles.append(cand[0])
 
         articles = []
         for title in titles:
             article = self.collection.find_article_by_title(title)
-            articles.append(article)
+            articles.append(article.id())
         
         return articles
+
+    def sortSearch(self, query):
+        c = self.db.cursor()
+
+        terms = extractWords(query)
+        titles = []
+        dict = {}
+        for term in terms:
+            cands = c.execute("SELECT document_id, times FROM postings WHERE term=?", (term,)).fetchall()
+            if cands == None:
+                continue
+            for cand in cands:
+                continue
+
+
+
+    def extractWords(self, query):
+        parser = natto.Mecab()
+        terms = []
+        for node in parser.parse(query, as_nodes=True):
+            if node.is_nor():
+                features = node.feature.split(',')
+                if features[0] != '助詞':
+                    terms.append(features[6] if len(features) == 9 else node.surface)
+        return terms
 
     def generate(self):
         # indexing process
