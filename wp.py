@@ -107,11 +107,11 @@ class Index():
             cands += c.execute("SELECT titles FROM termindexs WHERE term=?", (term,)).fetchone()
             for cand in cands:
                 if cand in dict:
-                        dict[cand] += 1
+                    dict[cand] += 1
                 else:
-                        dict[cand] = 1
+                    dict[cand] = 1
                 if dict[cand] == len(query):
-                        titles.append(cand)
+                    titles.append(cand)
 
         articles = []
         for title in titles:
