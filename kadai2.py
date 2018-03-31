@@ -17,7 +17,7 @@ def action():
            }, index=2, separators = (',', ':'),
            ensure_ascii = False)
    return json.dumps({
-       'textToSpeech': articles.join('or')
+       'textToSpeech': 'か'.join(article)
    }, indent=2, separators=(',', ': '), ensure_ascii=False)
 
 

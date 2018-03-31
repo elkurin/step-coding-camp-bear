@@ -98,12 +98,18 @@ class Index():
 
     def search(self, query):
         # search process
-
         c = self.db.cursor()
+        parser = natto.MeCab()
+		terms = []
+		for node in parser.parse(query, as_nodes=True):
+			features = node.feature.split(',')
+			if features[0] != '助詞':
+				terms.append(features[6] if len(features) == 9 else node.surface)
+
         # titles which apeare len(query) times are the rets
         titles = []
         dict = {}
-        for term in query:
+        for term in terms:
             cands += c.execute("SELECT titles FROM termindexs WHERE term=?", (term,)).fetchone()
             for cand in cands:
                 if cand in dict:
@@ -160,7 +166,6 @@ class Index():
 
         c.execute("""CREATE INDEX IF NOT EXISTS termindexs ON postings(term, document_id);""")
         self.db.commit()
-
 
 
 
