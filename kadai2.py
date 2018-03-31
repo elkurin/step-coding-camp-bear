@@ -4,7 +4,7 @@ import json
 import os
 
 collection = wp.WikipediaCollection("./data/wp.db")
-index = wp.Index("./data/index.db", collection)
+index = wp.Index("./data/index2.db", collection)
 
 @bottle.route('/action')
 def action():

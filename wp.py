@@ -101,14 +101,16 @@ class Index():
 
         # search process
         terms = self.extractWords(query)
+        print("extractWords Done")
 
         # titles which apeare len(query) times are the rets
         titles = []
-        dict = {}
+        flag = True
         for term in terms:
             cands = c.execute("SELECT document_id FROM postings WHERE term=?", (term,)).fetchall()
             if cands == None:
                 continue
+            """
             for cand in cands:
                 if cand[0] in dict:
                     dict[cand[0]] += 1
@@ -116,27 +118,37 @@ class Index():
                     dict[cand[0]] = 1
                 if dict[cand[0]] == len(terms):
                     titles.append(cand[0])
+            """
 
-        articles = []
-        for title in titles:
-            article = self.collection.find_article_by_title(title)
-            articles.append(article.id())
-        
-        return articles
+            temptitles = set(map(lambda c:c[0], cands))
 
+            newtitles = []
+            if flag:
+                newtitles = temptitles
+                flag = False
+            else:
+                for title in titles:
+                    if title in temptitles:
+                        newtitles.append(title)
+            titles = newtitles
+
+        print("all terms searched") 
+        return titles
+
+    """
     def sortSearch(self, query):
         c = self.db.cursor()
 
         terms = self.extractWords(query)
-        titles = []
         dict = {}
         for term in terms:
             cands = c.execute("SELECT document_id, times FROM postings WHERE term=?", (term,)).fetchall()
             if cands == None:
                 continue
             for cand in cands:
-                continue
-
+                if cand[0] in dict:
+                dict[cand[0]] = (1 + math.log(cand[1])) * match.log(N / cand[1])
+    """
 
 
     def extractWords(self, query):
