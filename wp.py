@@ -6,6 +6,7 @@ import math
 import numpy
 import unicodedata
 import string
+import re
 
 class Document():
     """Abstract class representing a document.
@@ -234,14 +235,17 @@ class Index():
         articles = self.collection.get_all_documents()
         count = 0
         n = 2
-
         table_for_remove = str.maketrans("", "", string.punctuation  + "「」、。・『』《》")
 
         for article in articles:
             count += 1
-            if count > 2: break
-            article_text = unicodedata.normalize("NFKC", article.text().strip())
+            if count > 100: break
+            article_text = unicodedata.normalize("NFKC", article.text().strip().replace(" ", ""))
             article_text = article_text.translate(table_for_remove)
+            article_text = re.sub(r'[a-zA-Z0-9¥"¥.¥,¥@]+', '', article_text, flags=re.IGNORECASE)
+            article_text = re.sub(r'[!"“#$%&()\*\+\-\.,\/:;<=>?@\[\\\]^_`{|}~]', '', article_text, flags=re.IGNORECASE)
+            article_text = re.sub(r'[\n|\r|\t|年|月|日]', '', article_text, flags=re.IGNORECASE)
+
             ngrams = [(article_text[i:i+n], article.id()) for i in range(0, len(article_text), n)]
             c.executemany("INSERT INTO ngrams(term, document_id) VALUES(?, ?)", ngrams)
 
@@ -341,5 +345,5 @@ class WikipediaCollection(Collection):
                     row[6], # wiki_text
                     row[7], # popularity_score
                     row[8], # num_incoming_links
-                )
+				       )
 

@@ -8,6 +8,6 @@ except OSError:
 
 collection = wp.WikipediaCollection("./data/wp.db")
 index = wp.Index("./data/index.db", collection)
-index.generate()
+# index.generate()
 index.generate_ngrams()
 
