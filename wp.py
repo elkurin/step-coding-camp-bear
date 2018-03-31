@@ -104,7 +104,7 @@ class Index():
         titles = []
         dict = {}
         for term in query:
-            cands += c.execute("SELECT titles FROM indexs WHERE index=?", (term,)).fetchone()
+            cands += c.execute("SELECT titles FROM popstings WHERE termindex=?", (term,)).fetchone()
             for cand in cands:
                 if cand in dict:
                         dict[cand] += 1
@@ -115,13 +115,18 @@ class Index():
 
         articles = []
         for title in titles:
-            article = collection.find_article_by_title(title)
+            article = self.collection.find_article_by_title(title)
             articles.append(article)
         
         return articles
 
     def generate(self):
         # indexing process
+        c = self.db.cursor()
+        c.execute("""CREATE TABLE IF NOT EXISTS postings (
+            term TEXT NOT NULL,
+            document_id TEXT NOT NULL
+        );""")
         def shouldBeIncluded(feature):
             if feature[0] == '名詞':
                 if feature[1] == 'サ変接続' or feature[1] == '一般' or feature[1] == '形容動詞語幹' or feature[1] == '固有名詞' or feature[1] == '数':
@@ -135,17 +140,16 @@ class Index():
             return False
 
         parser = natto.MeCab()
-        dict = {}
-        articles = collection.get_all_documents()
+        articles = self.collection.get_all_documents()
         for article in articles:
-            for node in parser.parse(article.wiki_text, as_nodes=True):
+            for node in parser.parse(article.text(), as_nodes=True):
                 term = node.surface
                 features = node.feature.split(',')
                 if shouldBeIncluded(features):
-                    if term in dict:
-                        dict[term] += article.title
-                    else:
-                        dict[term] = [article.title]
+                    c.execute("INSERT INTO postings VALUES(?, ?)", (term, article.id(),))
+
+        c.execute("""CREATE UNIQUE INDEX termindex ON postings(titles);""")
+        c.commit()
 
 
 
