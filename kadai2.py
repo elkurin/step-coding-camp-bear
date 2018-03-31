@@ -13,7 +13,7 @@ def action():
    bottle.response.content_type = 'application/json'
    if titles is None:
        return json.dums({
-           'textToSpeech': '404 Not Found'
+           'textToSpeech': 'はい残念みつからないよー'
            }, index=2, separators = (',', ':'),
            ensure_ascii = False)
    return json.dumps({
