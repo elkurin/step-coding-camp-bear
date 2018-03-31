@@ -4,6 +4,8 @@ import json
 import natto
 import math
 import numpy
+import unicodedata
+import string
 
 class Document():
     """Abstract class representing a document.
@@ -211,7 +213,7 @@ class Index():
                 if node.is_nor():
                     features = node.feature.split(',')
                     term = features[6] if len(features) == 9 else node.surface
-                    if self.shouldBeIncluded(features):
+                    if FilterWords.shouldBeIncluded(features):
                         if term in dict:
                             dict[term] += 1
                         else:
@@ -221,6 +223,32 @@ class Index():
 
         c.execute("""CREATE INDEX IF NOT EXISTS termindexs ON postings(term, document_id);""")
         self.db.commit()
+    
+    def generate_ngrams(self):
+        c = self.db.cursor()
+        c.execute("""CREATE TABLE IF NOT EXISTS ngrams (
+            term TEXT NOT NULL,
+            document_id TEXT NOT NULL,
+            times INTEGER
+        );""")
+        articles = self.collection.get_all_documents()
+        count = 0
+        n = 2
+
+        table_for_remove = str.maketrans("", "", string.punctuation  + "「」、。・『』《》")
+
+        for article in articles:
+            count += 1
+            if count > 2: break
+            article_text = unicodedata.normalize("NFKC", article.text().strip())
+            article_text = article_text.translate(table_for_remove)
+            ngrams = [(article_text[i:i+n], article.id()) for i in range(0, len(article_text), n)]
+            c.executemany("INSERT INTO ngrams(term, document_id) VALUES(?, ?)", ngrams)
+
+
+        c.execute("""CREATE INDEX IF NOT EXISTS termindexs ON ngrams(term, document_id);""")
+        self.db.commit()
+
 
 
 class WikipediaCollection(Collection):
