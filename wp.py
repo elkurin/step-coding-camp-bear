@@ -141,15 +141,19 @@ class Index():
 
         parser = natto.MeCab()
         articles = self.collection.get_all_documents()
+        count = 0
         for article in articles:
+            count += 1
+            if count > 100:
+                break
             for node in parser.parse(article.text(), as_nodes=True):
                 term = node.surface
                 features = node.feature.split(',')
                 if shouldBeIncluded(features):
                     c.execute("INSERT INTO postings VALUES(?, ?)", (term, article.id(),))
 
-        c.execute("""CREATE UNIQUE INDEX termindex ON postings(titles);""")
-        c.commit()
+        c.execute("""CREATE UNIQUE INDEX termindex ON postings(document_id);""")
+        self.db.commit()
 
 
 
