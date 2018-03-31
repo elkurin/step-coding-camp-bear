@@ -2,6 +2,8 @@ import sqlite3
 import sys
 import json
 import natto
+import math
+import numpy
 
 class Document():
     """Abstract class representing a document.
@@ -90,17 +92,33 @@ class WikipediaArticle(Document):
         """
         return self._text
 
+class AnalyseQuery():
+    def shouldBeIncluded(feature):
+        if feature[0] == '名詞':
+            if feature[1] == 'サ変接続' or feature[1] == '一般' or feature[1] == '形容動詞語幹' or feature[1] == '固有名詞' or feature[1] == '数':
+                return True
+        elif feature[0] == '形容詞':
+            if feature[1] == '自立':
+                return True
+        elif feature[0] == '動詞':
+            if feature[1] == '自立':
+                return True
+        return False
+
+    def excludeParticles(features):
+        return features[0] != '助詞'
+
 class Index():
 
     def __init__(self, filename, collection):
         self.db = sqlite3.connect(filename)
         self.collection = collection
 
-    def search(self, query):
+    def search(self, query, func = AnalyseQuery.shouldBeIncluded):
         c = self.db.cursor()
 
         # search process
-        terms = self.extractWords(query)
+        terms = self.extractWords(query, func)
         print("extractWords Done")
 
         # titles which apeare len(query) times are the rets
@@ -122,42 +140,54 @@ class Index():
 
             temptitles = set(map(lambda c:c[0], cands))
 
-            newtitles = []
             if flag:
-                newtitles = temptitles
+                titles = temptitles
                 flag = False
             else:
-                for title in titles:
-                    if title in temptitles:
-                        newtitles.append(title)
-            titles = newtitles
+                titles = titles & temptitles
 
         print("all terms searched") 
         return titles
 
-    """
-    def sortSearch(self, query):
+    def sortSearch(self, query, func = AnalyseQuery.shouldBeIncluded):
         c = self.db.cursor()
 
-        terms = self.extractWords(query)
-        dict = {}
-        for term in terms:
+        terms = self.extractWords(query, func)
+        documentVectors = {}
+        defaultVector = []
+        for n, term in enumerate(terms):
             cands = c.execute("SELECT document_id, times FROM postings WHERE term=?", (term,)).fetchall()
+            termPoint = (1 + math.log(len(cands)) * math.log(self.collection.num_documents() / len(cands)))
+            defaultVector.append(termPoint)
+
             if cands == None:
                 continue
             for cand in cands:
-                if cand[0] in dict:
-                dict[cand[0]] = (1 + math.log(cand[1])) * match.log(N / cand[1])
-    """
+                if cand[0] in documentVectors:
+                    documentVectors[cand[0]][n] = termPoint
+                else:
+                    documentVectors[cand[0]] = [0 for i in range(len(terms))]
+                    documentVectors[cand[0]][n] = termPoint
+
+        max_cos = -1
+        best_title = ''
+
+        for title, documentVector in documentVectors.items():
+            cos = numpy.dot(documentVector, defaultVector) / (numpy.linalg.norm(documentVector) * numpy.linalg.norm(defaultVector))
+            if max_cos < cos:
+                max_cos = cos
+                best_title = title
+        return best_title
 
 
-    def extractWords(self, query):
+    def extractWords(self, query, func):
         parser = natto.MeCab()
         terms = []
         for node in parser.parse(query, as_nodes=True):
             if node.is_nor():
                 features = node.feature.split(',')
-                if features[0] != '助詞':
+                # if features[0] != '助詞':
+                if func(features):
                     terms.append(features[6] if len(features) == 9 else node.surface)
         return terms
 
@@ -169,18 +199,6 @@ class Index():
             document_id TEXT NOT NULL,
             times INTEGER
         );""")
-        def shouldBeIncluded(feature):
-            if feature[0] == '名詞':
-                if feature[1] == 'サ変接続' or feature[1] == '一般' or feature[1] == '形容動詞語幹' or feature[1] == '固有名詞' or feature[1] == '数':
-                    return True
-            elif feature[0] == '形容詞':
-                if feature[1] == '自立':
-                    return True
-            elif feature[0] == '動詞':
-                if feature[1] == '自立':
-                    return True
-            return False
-
         parser = natto.MeCab()
         articles = self.collection.get_all_documents()
         count = 0
@@ -194,7 +212,7 @@ class Index():
                 if node.is_nor():
                     features = node.feature.split(',')
                     term = features[6] if len(features) == 9 else node.surface
-                    if shouldBeIncluded(features):
+                    if self.shouldBeIncluded(features):
                         if term in dict:
                             dict[term] += 1
                         else:

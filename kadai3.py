@@ -4,20 +4,20 @@ import json
 import os
 
 collection = wp.WikipediaCollection("./data/wp.db")
-index = wp.Index("./data/index2.db", collection)
+index = wp.Index("./data/index.db", collection)
 
 @bottle.route('/action')
 def action():
    query = bottle.request.query.q
-   titles = index.search(query, wp.AnalyseQuery.excludeParticles)
+   title = index.sortSearch(query)
    bottle.response.content_type = 'application/json'
-   if titles is None:
+   if title is None:
        return json.dums({
            'textToSpeech': 'はい残念みつからないよー'
            }, index=2, separators = (',', ':'),
            ensure_ascii = False)
    return json.dumps({
-       'textToSpeech': 'か'.join(titles)
+       'textToSpeech': title
    }, indent=2, separators=(',', ': '), ensure_ascii=False)
 
 
