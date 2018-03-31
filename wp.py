@@ -148,7 +148,7 @@ class Index():
                 break
             for node in parser.parse(article.text(), as_nodes=True):
                 features = node.feature.split(',')
-                term = features[8] if len(features) == 9 else node.surface
+                term = features[6] if len(features) == 9 else node.surface
                 if shouldBeIncluded(features):
                     c.execute("INSERT INTO postings VALUES(?, ?)", (term, article.id(),))
 
