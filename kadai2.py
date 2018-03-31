@@ -11,13 +11,13 @@ def action():
    query = bottle.request.query.q
    articles = index.search(query)
    bottle.response.content_type = 'application/json'
-   if article is None:
+   if articles is None:
        return json.dums({
            'textToSpeech': '404 Not Found'
            }, index=2, separators = (',', ':'),
            ensure_ascii = False)
    return json.dumps({
-       'textToSpeech': 'か'.join(article)
+       'textToSpeech': 'か'.join(articles)
    }, indent=2, separators=(',', ': '), ensure_ascii=False)
 
 

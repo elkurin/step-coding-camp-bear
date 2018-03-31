@@ -110,7 +110,9 @@ class Index():
         titles = []
         dict = {}
         for term in terms:
-            cands += c.execute("SELECT titles FROM termindexs WHERE term=?", (term,)).fetchone()
+            cands = c.execute("SELECT document_id FROM postings WHERE term=?", (term,)).fetchone()
+            if cands == None:
+                continue
             for cand in cands:
                 if cand in dict:
                     dict[cand] += 1
@@ -131,7 +133,8 @@ class Index():
         c = self.db.cursor()
         c.execute("""CREATE TABLE IF NOT EXISTS postings (
             term TEXT NOT NULL,
-            document_id TEXT NOT NULL
+            document_id TEXT NOT NULL,
+            times INTEGER
         );""")
         def shouldBeIncluded(feature):
             if feature[0] == '名詞':
@@ -159,12 +162,13 @@ class Index():
                 term = features[6] if len(features) == 9 else node.surface
                 if shouldBeIncluded(features):
                     if term in dict:
-                        pass
+                        dict[term] += 1
                     else:
-                        dict[term] = True
-                        c.execute("INSERT INTO postings VALUES(?, ?)", (term, article.id(),))
+                        dict[term] = 1
+            for term in dict.keys():
+                c.execute("INSERT INTO postings VALUES(?, ?, ?)", (term, article.id(), dict[term],))
 
-        c.execute("""CREATE INDEX IF NOT EXISTS termindexs ON postings(term, document_id);""")
+        c.execute("""CREATE INDEX IF NOT EXISTS termindexs ON postings(term, document_id, times);""")
         self.db.commit()
 
 
