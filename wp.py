@@ -122,6 +122,18 @@ class Index():
 
     def generate(self):
         # indexing process
+        def shouldBeIncluded(feature):
+            if feature[0] == '名詞':
+                if feature[1] == 'サ変接続' or feature[1] == '一般' or feature[1] == '形容動詞語幹' or feature[1] == '固有名詞' or feature[1] == '数':
+                    return True
+            elif feature[0] == '形容詞':
+                if feature[1] == '自立':
+                    return True
+            elif feature[0] == '動詞':
+                if feature[1] == '自立':
+                    return True
+            return False
+
         parser = natto.MeCab()
         dict = {}
         articles = WikipediaCollection("./data/wp.db").get_all_documents()
@@ -129,11 +141,12 @@ class Index():
             for node in parser.parse(article.wiki_text, as_nodes=True):
                 term = node.surface
                 features = node.feature.split(',')
-                if features[0] == '名詞':
+                if shouldBeIncluded(features):
                     if term in dict:
                         dict[term] += article.title
                     else:
                         dict[term] = [article.title]
+
 
 
 
