@@ -133,8 +133,8 @@ class AnalyseQuery():
         ngrams = re.sub(r'[!"“#$%&()\*\+\-\.,\/:;<=>?@\[\\\]^_`{|}~]', '', ngrams, flags=re.IGNORECASE)
         ngrams = re.sub(r'[\n|\r|\t|年|月|日]', '', ngrams, flags=re.IGNORECASE)
 
-        ngrams = [ngrams[i:i+n] for i in range(0, len(ngrams), n)]
-        
+        ngrams = [ngrams[i:i+n] for i in range(0, len(ngrams))]
+        print(ngrams) 
         return ngrams
 
 class Index():
