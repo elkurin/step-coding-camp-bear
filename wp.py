@@ -368,5 +368,5 @@ class WikipediaCollection(Collection):
                     row[6], # wiki_text
                     row[7], # popularity_score
                     row[8], # num_incoming_links
-				       )
+		)
 
