@@ -12,13 +12,15 @@ def action():
    query = bottle.request.query.q
    terms = analyse.extractWords(query)
    ngrams = analyse.divide_ngrams(query)
-   print('Debug: get document title containing ngrams', index.ngrams_search(ngrams))
+   # print('Debug: get document title containing ngrams', index.ngrams_search(ngrams))
+
+   # title = index.sortSearchWithNgram(terms, ngrams)
    title = index.sortSearch(terms)
    bottle.response.content_type = 'application/json'
    if title is None:
-       return json.dums({
+       return json.dumps({
            'textToSpeech': 'はい残念みつからないよー'
-           }, index=2, separators = (',', ':'),
+           }, indent=2, separators = (',', ':'),
            ensure_ascii = False)
    return json.dumps({
        'textToSpeech': title

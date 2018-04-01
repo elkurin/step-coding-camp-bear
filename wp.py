@@ -203,62 +203,112 @@ class Index():
 
                 documentVectors[cand[0]][n] = (1 + math.log(cand[1] / length[cand[0]])) * math.log(self.collection.num_documents() / len(cands))
 
-        max_cos = -1
-        best_title = ''
+        return self.returnBestTitleWithSorting(documentVectors, defaultVector)
 
-        for title, documentVector in documentVectors.items():
-            cos = numpy.dot(documentVector, defaultVector) / (numpy.linalg.norm(documentVector) * numpy.linalg.norm(defaultVector))
-            if max_cos < cos:
-                max_cos = cos
-                best_title = title
-
-        print(defaultVector)
-        print(documentVectors[best_title])
-        print()
-        return best_title
-
-<<<<<<< HEAD
-    def sortSearchFromTwoVectors(self, vectors1, vectors2, defaultVector1, defaultVector2):
-        defaultVector = numpy.add(defaultVector1, defaultVector2)
-        vectors = {}
-        for title in vectors1.keys():
-            if title in vectors2:
-                vectors[title] = numpy.add(vectors1[title], vectors2[title])
-            else:
-                vectors[title] = vectors1[title]
-
-        max_cos = -1
-        best_title = ''
-
-        for title, vector in vectors.items():
-            cos = numpy.dot(vector, defaultVector) / (numpy.linalg.norm(vector) * numpy.linalg.norm(vector))
-            if max_cos < cos:
-                max_cos = cos
-                best_title = title
-        return best_title
-
-
-
-    def sortSearchReturnVectors(self, terms):
+    def sortSearchWithNgram(self, terms, ngrams):
         c = self.db.cursor()
+
+        ngrams_list = self.ngrams_search(ngrams)
 
         documentVectors = {}
         defaultVector = []
+        length = {}
         for n, term in enumerate(terms):
-            cands = c.execute("SELECT document_id FROM postings WHERE term=?", (term,)).fetchall()
+            cands = c.execute("SELECT document_id, times FROM postings WHERE term=?", (term,)).fetchall()
             if cands == None or len(cands) ==  0:
                 defaultVector.append(0)
                 continue
             # non-zero div is ensured
-            termPoint = (1 + math.log(len(cands)) * math.log(self.collection.num_documents() / len(cands)))
-            defaultVector.append(termPoint)
+            defaultVector.append(math.log(self.collection.num_documents() / len(cands)))
 
             for cand in cands:
+                if cand[0] in length:
+                    pass
+                else:
+                    # length[cand[0]] = len(self.collection.find_article_by_title(cand[0]).text)
+                    length[cand[0]] = 1
                 if cand[0] in documentVectors:
-                    documentVectors[cand[0]][n] = termPoint
+                    pass
+                else:
+                    documentVectors[cand[0]] = [0 for i in range(len(terms) + 1)]
+
+                documentVectors[cand[0]][n] = (1 + math.log(cand[1] / length[cand[0]])) * math.log(self.collection.num_documents() / len(cands))
+
+        defaultVector.append(numpy.sum(defaultVector) / len(terms))
+        for title in documentVectors.keys():
+            if title in ngrams_list:
+                documentVectors[title][len(terms)] = numpy.sum(defaultVector) / len(terms)
+
+        return self.returnBestTitleWithSorting(documentVectors, defaultVector)
+
+    def sortSearchFromTwoVectors(self, vectors1, vectors2, defaultVector1, defaultVector2):
+        defaultVector = numpy.add(defaultVector1, numpy.multiply(defaultVector2, 0.1))
+        vectors = {}
+        for title in vectors1.keys():
+            if title in vectors2:
+                vectors[title] = numpy.add(vectors1[title], numpy.multiply(vectors2[title], 0.1))
+            else:
+                vectors[title] = vectors1[title]
+
+        return self.returnBestTitleWithSorting(vectors, defaultVector)
+
+    def returnBestTitle(self, documentVectors, defaultVector):
+        defaultVector[len(defaultVector) - 1] *= 10
+        max_cos = -1
+        best_title = ''
+
+        for title, documentVector in documentVectors.items():
+            documentVector[len(documentVector) - 1] *= 10
+            cos = numpy.dot(documentVector, defaultVector) / (numpy.linalg.norm(documentVector) * numpy.linalg.norm(defaultVector))
+            if max_cos < cos:
+                max_cos = cos
+                best_title = title
+        return best_title
+
+    def returnBestTitleWithSorting(self, documentVectors, defaultVector):
+        defaultVector[len(defaultVector) - 1] *= 10
+        cos_title = []
+        for title, documentVector in documentVectors.items():
+            documentVector[len(documentVector) - 1] *= 10
+            cos = numpy.dot(documentVector, defaultVector) / (numpy.linalg.norm(documentVector) * numpy.linalg.norm(defaultVector))
+            cos_title.append((cos, title))
+
+        cos_title = sorted(cos_title, reverse=True)
+        print(cos_title[0][1])
+        print(cos_title[1][1])
+        print(cos_title[2][1])
+        print(cos_title[3][1])
+        print(cos_title[4][1])
+        print()
+
+        return cos_title[0][1]
+
+    def sortSearchReturnVectors(self, terms):
+        c = self.db.cursor()
+        documentVectors = {}
+        defaultVector = []
+        length = {}
+        for n, term in enumerate(terms):
+            cands = c.execute("SELECT document_id, times FROM postings WHERE term=?", (term,)).fetchall()
+            if cands == None or len(cands) ==  0:
+                defaultVector.append(0)
+                continue
+            # non-zero div is ensured
+            defaultVector.append(math.log(self.collection.num_documents() / len(cands)))
+
+            for cand in cands:
+                if cand[0] in length:
+                    pass
+                else:
+                    # length[cand[0]] = len(self.collection.find_article_by_title(cand[0]).text)
+                    length[cand[0]] = 1
+                if cand[0] in documentVectors:
+                    pass
                 else:
                     documentVectors[cand[0]] = [0 for i in range(len(terms))]
-                    documentVectors[cand[0]][n] = termPoint
+
+                documentVectors[cand[0]][n] = (1 + math.log(cand[1] / length[cand[0]])) * math.log(self.collection.num_documents() / len(cands))
+
 
         returnVectors = {}
         for title, documentVector in documentVectors.items():
