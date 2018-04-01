@@ -11,6 +11,8 @@ analyse = wp.AnalyseQuery()
 def action():
    query = bottle.request.query.q
    terms = analyse.extractWords(query)
+   ngrams = analyse.divide_ngrams(query)
+   print('Debug: get document title containing ngrams', index.ngrams_search(ngrams))
    title = index.sortSearch(terms)
    bottle.response.content_type = 'application/json'
    if title is None:

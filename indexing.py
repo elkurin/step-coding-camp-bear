@@ -7,6 +7,5 @@ except OSError:
 	pass
 
 collection = wp.WikipediaCollection("./data/wp.db")
-index = wp.Index("./data/indexOpeningText.db", collection)
-index.generateFromOpeningText()
-
+# index = wp.Index("./data/index.db", collection)
+# index.generate()
