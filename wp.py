@@ -134,7 +134,6 @@ class AnalyseQuery():
         ngrams = re.sub(r'[\n|\r|\t|年|月|日]', '', ngrams, flags=re.IGNORECASE)
 
         ngrams = [ngrams[i:i+n] for i in range(0, len(ngrams))]
-        print(ngrams) 
         return ngrams
 
 class Index():
@@ -154,7 +153,7 @@ class Index():
         flag = True
         for term in terms:
             cands = c.execute("SELECT document_id FROM postings WHERE term=?", (term,)).fetchall()
-            if cands == None:
+            if cands == None: # TODO: len(cands) == 0
                 continue
             """
             for cand in cands:
@@ -184,6 +183,8 @@ class Index():
         defaultVector = []
         for n, term in enumerate(terms):
             cands = c.execute("SELECT document_id FROM postings WHERE term=?", (term,)).fetchall()
+
+            # TODO: math domain error if len(cands) == 0 を上に動かす
             termPoint = (1 + math.log(len(cands)) * math.log(self.collection.num_documents() / len(cands)))
             defaultVector.append(termPoint)
 
@@ -208,11 +209,18 @@ class Index():
 
     def ngrams_search(self, ngrams):
         c = self.db.cursor()
+        is_first = True
         for term in ngrams:
             cands = c.execute("SELECT document_id FROM postings WHERE term=?", (term,)).fetchall()
-
             if len(cands) == 0: continue
-            print("Debug: ", term, cands)
+
+            temptitles = set(map(lambda c:c[0], cands))
+            if is_first:
+                titles = temptitles
+                is_first = False
+            else:
+                titles = titles & temptitles
+            return titles
 
     def generate(self):
         # indexing process
