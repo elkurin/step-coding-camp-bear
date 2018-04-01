@@ -168,11 +168,13 @@ class Index():
         defaultVector = []
         for n, term in enumerate(terms):
             cands = c.execute("SELECT document_id FROM postings WHERE term=?", (term,)).fetchall()
+            if cands == None or len(cands) ==  0:
+                defaultVector.append(0)
+                continue
+            # non-zero div is ensured
             termPoint = (1 + math.log(len(cands)) * math.log(self.collection.num_documents() / len(cands)))
             defaultVector.append(termPoint)
 
-            if cands == None:
-                continue
             for cand in cands:
                 if cand[0] in documentVectors:
                     documentVectors[cand[0]][n] = termPoint
@@ -190,7 +192,90 @@ class Index():
                 best_title = title
         return best_title
 
+    def sortSearchReturnTable(self, terms):
+        c = self.db.cursor()
+
+        documentVectors = {}
+        defaultVector = []
+        for n, term in enumerate(terms):
+            cands = c.execute("SELECT document_id FROM postings WHERE term=?", (term,)).fetchall()
+            if cands == None or len(cands) == 0:
+                defaultVector.append(0)
+                continue
+            # non-zero div is ensured
+            termPoint = (1 + math.log(len(cands)) * math.log(self.collection.num_documents() / len(cands)))
+            defaultVector.append(termPoint)
+
+            for cand in cands:
+                if cand[0] in documentVectors:
+                    documentVectors[cand[0]][n] = termPoint
+                else:
+                    documentVectors[cand[0]] = [0 for i in range(len(terms))]
+                    documentVectors[cand[0]][n] = termPoint
+
+        max_cos = -1
+        best_title = ''
+
+        table = {}
+        for title, documentVector in documentVectors.items():
+            cos = numpy.dot(documentVector, defaultVector) / (numpy.linalg.norm(documentVector) * numpy.linalg.norm(defaultVector))
+            table[title] = cos
+
+        return table
+    
+    def returnBestFromTable(self, table):
+
+        max_title = ''
+        max_val = -1
+        for title in table.keys():
+            if max_val < table[title]:
+                max_val = table[title]
+                max_title = title
+
+        return max_title
+
+    def mergeTable(self, table1, table2):
+        # table1 < tabl2 is pereferable
+        
+        returnTable = {}
+
+        for title in table1.keys():
+            if title in table2:
+                returnTable[title] = table1[title] + table2[title] * 0.5
+            else:
+                returnTable[title] = table1[title]
+
+        return returnTable
+
     def generate(self):
+        # indexing process
+        c = self.db.cursor()
+        c.execute("""CREATE TABLE IF NOT EXISTS postings (
+            term TEXT NOT NULL,
+            document_id TEXT NOT NULL,
+            times INTEGER
+        );""")
+        parser = natto.MeCab()
+        articles = self.collection.get_all_documents()
+        for article in articles:
+
+            dict = {}
+            for node in parser.parse(article.text(), as_nodes=True):
+                if node.is_nor():
+                    features = node.feature.split(',')
+                    term = features[6] if len(features) == 9 else node.surface
+                    if FilterWords.shouldBeIncluded(features):
+                        if term in dict:
+                            dict[term] += 1
+                        else:
+                            dict[term] = 1
+            for term in dict.keys():
+                c.execute("INSERT INTO postings VALUES(?, ?, ?)", (term, article.id(), dict[term],))
+
+        c.execute("""CREATE INDEX IF NOT EXISTS termindexs ON postings(term, document_id);""")
+        self.db.commit()
+
+    def generateFromOpeningText(self):
         # indexing process
         c = self.db.cursor()
         c.execute("""CREATE TABLE IF NOT EXISTS postings (
@@ -207,11 +292,11 @@ class Index():
                 break
 
             dict = {}
-            for node in parser.parse(article.text(), as_nodes=True):
+            for node in parser.parse(article.opening_text, as_nodes=True):
                 if node.is_nor():
                     features = node.feature.split(',')
                     term = features[6] if len(features) == 9 else node.surface
-                    if self.shouldBeIncluded(features):
+                    if FilterWords.shouldBeIncluded(features):
                         if term in dict:
                             dict[term] += 1
                         else:
