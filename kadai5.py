@@ -5,19 +5,24 @@ import os
 
 collection = wp.WikipediaCollection("./data/wp.db")
 index = wp.Index("./data/index2.db", collection)
-indexOpeningText = wp.Index("./data/index3.db", collection)
+indexOpeningText = wp.Index("./data/indexOpeningText.db", collection)
 analyse = wp.AnalyseQuery()
 
 @bottle.route('/action')
 def action():
    query = bottle.request.query.q
    terms = analyse.extractWords(query)
+   """
+   (vectors1, defaultVector1) = index.sortSearchReturnVectors(terms)
+   (vectors2, defaultVector2) = indexOpeningText.sortSearchReturnVectors(terms)
+   title = index.sortSearchFromTwoVectors(vectors1, vectors2, defaultVector1, defaultVector2)
+   """
    table1 = index.sortSearchReturnTable(terms)
    table2 = indexOpeningText.sortSearchReturnTable(terms)
    title = index.returnBestFromTable(index.mergeTable(table1, table2))
    bottle.response.content_type = 'application/json'
    if title is None:
-       return json.dums({
+       return json.dumps({
            'textToSpeech': 'はい残念みつからないよー'
            }, index=2, separators = (',', ':'),
            ensure_ascii = False)

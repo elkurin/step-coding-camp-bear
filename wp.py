@@ -166,6 +166,68 @@ class Index():
 
         documentVectors = {}
         defaultVector = []
+        length = {}
+        for n, term in enumerate(terms):
+            cands = c.execute("SELECT document_id, times FROM postings WHERE term=?", (term,)).fetchall()
+            if cands == None or len(cands) ==  0:
+                defaultVector.append(0)
+                continue
+            # non-zero div is ensured
+            defaultVector.append(math.log(self.collection.num_documents() / len(cands)))
+
+            for cand in cands:
+                if cand[0] in length:
+                    pass
+                else:
+                    # length[cand[0]] = len(self.collection.find_article_by_title(cand[0]).text)
+                    length[cand[0]] = 1
+                if cand[0] in documentVectors:
+                    pass
+                else:
+                    documentVectors[cand[0]] = [0 for i in range(len(terms))]
+
+                documentVectors[cand[0]][n] = (1 + math.log(cand[1] / length[cand[0]])) * math.log(self.collection.num_documents() / len(cands))
+
+        max_cos = -1
+        best_title = ''
+
+        for title, documentVector in documentVectors.items():
+            cos = numpy.dot(documentVector, defaultVector) / (numpy.linalg.norm(documentVector) * numpy.linalg.norm(defaultVector))
+            if max_cos < cos:
+                max_cos = cos
+                best_title = title
+
+        print(defaultVector)
+        print(documentVectors[best_title])
+        print()
+        return best_title
+
+    def sortSearchFromTwoVectors(self, vectors1, vectors2, defaultVector1, defaultVector2):
+        defaultVector = numpy.add(defaultVector1, defaultVector2)
+        vectors = {}
+        for title in vectors1.keys():
+            if title in vectors2:
+                vectors[title] = numpy.add(vectors1[title], vectors2[title])
+            else:
+                vectors[title] = vectors1[title]
+
+        max_cos = -1
+        best_title = ''
+
+        for title, vector in vectors.items():
+            cos = numpy.dot(vector, defaultVector) / (numpy.linalg.norm(vector) * numpy.linalg.norm(vector))
+            if max_cos < cos:
+                max_cos = cos
+                best_title = title
+        return best_title
+
+
+
+    def sortSearchReturnVectors(self, terms):
+        c = self.db.cursor()
+
+        documentVectors = {}
+        defaultVector = []
         for n, term in enumerate(terms):
             cands = c.execute("SELECT document_id FROM postings WHERE term=?", (term,)).fetchall()
             if cands == None or len(cands) ==  0:
@@ -182,15 +244,11 @@ class Index():
                     documentVectors[cand[0]] = [0 for i in range(len(terms))]
                     documentVectors[cand[0]][n] = termPoint
 
-        max_cos = -1
-        best_title = ''
-
+        returnVectors = {}
         for title, documentVector in documentVectors.items():
-            cos = numpy.dot(documentVector, defaultVector) / (numpy.linalg.norm(documentVector) * numpy.linalg.norm(defaultVector))
-            if max_cos < cos:
-                max_cos = cos
-                best_title = title
-        return best_title
+            returnVectors[title] = documentVector
+
+        return (returnVectors, defaultVector)
 
     def sortSearchReturnTable(self, terms):
         c = self.db.cursor()
@@ -257,7 +315,11 @@ class Index():
         );""")
         parser = natto.MeCab()
         articles = self.collection.get_all_documents()
+        count = 0
         for article in articles:
+            count += 1
+            if count % 100 == 0:
+                print(count)
 
             dict = {}
             for node in parser.parse(article.text(), as_nodes=True):
@@ -272,7 +334,7 @@ class Index():
             for term in dict.keys():
                 c.execute("INSERT INTO postings VALUES(?, ?, ?)", (term, article.id(), dict[term],))
 
-        c.execute("""CREATE INDEX IF NOT EXISTS termindexs ON postings(term, document_id);""")
+        c.execute("""CREATE INDEX IF NOT EXISTS termindexs ON postings(term, document_id, times);""")
         self.db.commit()
 
     def generateFromOpeningText(self):
@@ -304,7 +366,7 @@ class Index():
             for term in dict.keys():
                 c.execute("INSERT INTO postings VALUES(?, ?, ?)", (term, article.id(), dict[term],))
 
-        c.execute("""CREATE INDEX IF NOT EXISTS termindexs ON postings(term, document_id);""")
+        c.execute("""CREATE INDEX IF NOT EXISTS termindexs ON postings(term, document_id, times);""")
         self.db.commit()
 
 
