@@ -4,13 +4,15 @@ import json
 import os
 
 collection = wp.WikipediaCollection("./data/wp.db")
-index = wp.Index("./data/index2.db", collection)
+index = wp.Index("./data/index.db", collection)
 analyse = wp.AnalyseQuery()
 
 @bottle.route('/action')
 def action():
    query = bottle.request.query.q
    terms = analyse.extractWords(query)
+   ngrams = analyse.divide_ngrams(query)
+   print('Debug: get document title containing ngrams', index.ngrams_search(ngrams))
    title = index.sortSearch(terms)
    bottle.response.content_type = 'application/json'
    if title is None:

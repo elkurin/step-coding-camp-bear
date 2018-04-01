@@ -4,6 +4,9 @@ import json
 import natto
 import math
 import numpy
+import unicodedata
+import string
+import re
 
 class Document():
     """Abstract class representing a document.
@@ -121,6 +124,18 @@ class AnalyseQuery():
                     terms.append(features[6] if len(features) == 9 else node.surface)
         return terms
 
+    def divide_ngrams(self, query):
+        n = 2
+        table_for_remove = str.maketrans("", "", string.punctuation  + "「」、。・『』《》")
+        ngrams = unicodedata.normalize("NFKC", query.strip().replace(" ", ""))
+        ngrams = ngrams.translate(table_for_remove)
+        ngrams = re.sub(r'[a-zA-Z0-9¥"¥.¥,¥@]+', '', ngrams, flags=re.IGNORECASE)
+        ngrams = re.sub(r'[!"“#$%&()\*\+\-\.,\/:;<=>?@\[\\\]^_`{|}~]', '', ngrams, flags=re.IGNORECASE)
+        ngrams = re.sub(r'[\n|\r|\t|年|月|日]', '', ngrams, flags=re.IGNORECASE)
+
+        ngrams = [ngrams[i:i+n] for i in range(0, len(ngrams))]
+        return ngrams
+
 class Index():
 
     def __init__(self, filename, collection):
@@ -138,7 +153,7 @@ class Index():
         flag = True
         for term in terms:
             cands = c.execute("SELECT document_id FROM postings WHERE term=?", (term,)).fetchall()
-            if cands == None:
+            if cands == None: # TODO: len(cands) == 0
                 continue
             """
             for cand in cands:
@@ -191,6 +206,21 @@ class Index():
                 max_cos = cos
                 best_title = title
         return best_title
+
+    def ngrams_search(self, ngrams):
+        c = self.db.cursor()
+        is_first = True
+        for term in ngrams:
+            cands = c.execute("SELECT document_id FROM postings WHERE term=?", (term,)).fetchall()
+            if len(cands) == 0: continue
+
+            temptitles = set(map(lambda c:c[0], cands))
+            if is_first:
+                titles = temptitles
+                is_first = False
+            else:
+                titles = titles & temptitles
+            return titles
 
     def sortSearchReturnTable(self, terms):
         c = self.db.cursor()
@@ -306,6 +336,29 @@ class Index():
 
         c.execute("""CREATE INDEX IF NOT EXISTS termindexs ON postings(term, document_id);""")
         self.db.commit()
+    
+    def generate_ngrams(self):
+        c = self.db.cursor()
+        c.execute("""CREATE TABLE IF NOT EXISTS ngrams (
+            term TEXT NOT NULL,
+            document_id TEXT NOT NULL
+        );""")
+        articles = self.collection.get_all_documents()
+        count = 0
+        analyse = AnalyseQuery()
+
+        for article in articles:
+            count += 1
+            if count > 100: break
+
+            ngrams = analyse.divide_ngrams(article.text())
+            ngrams_titles = [(ngram, article.id()) for ngram in ngrams]
+            c.executemany("INSERT INTO ngrams(term, document_id) VALUES(?, ?)", ngrams_titles)
+
+
+        c.execute("""CREATE INDEX IF NOT EXISTS termindexs ON ngrams(term, document_id);""")
+        self.db.commit()
+
 
 
 class WikipediaCollection(Collection):
@@ -398,5 +451,5 @@ class WikipediaCollection(Collection):
                     row[6], # wiki_text
                     row[7], # popularity_score
                     row[8], # num_incoming_links
-                )
+		)
 
