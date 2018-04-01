@@ -124,6 +124,19 @@ class AnalyseQuery():
                     terms.append(features[6] if len(features) == 9 else node.surface)
         return terms
 
+    def divide_ngrams(self, query):
+        n = 2
+        table_for_remove = str.maketrans("", "", string.punctuation  + "「」、。・『』《》")
+        ngrams = unicodedata.normalize("NFKC", query.strip().replace(" ", ""))
+        ngrams = ngrams.translate(table_for_remove)
+        ngrams = re.sub(r'[a-zA-Z0-9¥"¥.¥,¥@]+', '', ngrams, flags=re.IGNORECASE)
+        ngrams = re.sub(r'[!"“#$%&()\*\+\-\.,\/:;<=>?@\[\\\]^_`{|}~]', '', ngrams, flags=re.IGNORECASE)
+        ngrams = re.sub(r'[\n|\r|\t|年|月|日]', '', ngrams, flags=re.IGNORECASE)
+
+        ngrams = [ngrams[i:i+n] for i in range(0, len(ngrams), n)]
+        
+        return ngrams
+
 class Index():
 
     def __init__(self, filename, collection):
@@ -174,7 +187,7 @@ class Index():
             termPoint = (1 + math.log(len(cands)) * math.log(self.collection.num_documents() / len(cands)))
             defaultVector.append(termPoint)
 
-            if cands == None:
+            if cands == None: # TODO: len(cands) == 0
                 continue
             for cand in cands:
                 if cand[0] in documentVectors:
@@ -192,6 +205,14 @@ class Index():
                 max_cos = cos
                 best_title = title
         return best_title
+
+    def ngrams_search(self, ngrams):
+        c = self.db.cursor()
+        for term in ngrams:
+            cands = c.execute("SELECT document_id FROM postings WHERE term=?", (term,)).fetchall()
+
+            if len(cands) == 0: continue
+            print("Debug: ", term, cands)
 
     def generate(self):
         # indexing process
@@ -229,25 +250,19 @@ class Index():
         c = self.db.cursor()
         c.execute("""CREATE TABLE IF NOT EXISTS ngrams (
             term TEXT NOT NULL,
-            document_id TEXT NOT NULL,
-            times INTEGER
+            document_id TEXT NOT NULL
         );""")
         articles = self.collection.get_all_documents()
         count = 0
-        n = 2
-        table_for_remove = str.maketrans("", "", string.punctuation  + "「」、。・『』《》")
+        analyse = AnalyseQuery()
 
         for article in articles:
             count += 1
             if count > 100: break
-            article_text = unicodedata.normalize("NFKC", article.text().strip().replace(" ", ""))
-            article_text = article_text.translate(table_for_remove)
-            article_text = re.sub(r'[a-zA-Z0-9¥"¥.¥,¥@]+', '', article_text, flags=re.IGNORECASE)
-            article_text = re.sub(r'[!"“#$%&()\*\+\-\.,\/:;<=>?@\[\\\]^_`{|}~]', '', article_text, flags=re.IGNORECASE)
-            article_text = re.sub(r'[\n|\r|\t|年|月|日]', '', article_text, flags=re.IGNORECASE)
 
-            ngrams = [(article_text[i:i+n], article.id()) for i in range(0, len(article_text), n)]
-            c.executemany("INSERT INTO ngrams(term, document_id) VALUES(?, ?)", ngrams)
+            ngrams = analyse.divide_ngrams(article.text())
+            ngrams_titles = [(ngram, article.id()) for ngram in ngrams]
+            c.executemany("INSERT INTO ngrams(term, document_id) VALUES(?, ?)", ngrams_titles)
 
 
         c.execute("""CREATE INDEX IF NOT EXISTS termindexs ON ngrams(term, document_id);""")
