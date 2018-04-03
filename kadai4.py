@@ -4,7 +4,7 @@ import json
 import os
 
 collection = wp.WikipediaCollection("./data/wp.db")
-index = wp.Index("./data/index2.db", collection)
+index = wp.Index("./data/indexWithTimes.db", collection)
 analyse = wp.AnalyseQuery()
 
 gameEnd = False
@@ -19,11 +19,12 @@ def action():
         if query == 'はい':
             gameEnd = False
             return json.dumps({
-                'textToSpeech': 'ゲームを始めるよ'
+                'textToSpeech': '新しいゲームを始めるよ。単語を言ってください'
             }, indent=2, separators=(',', ': '), ensure_ascii=False)
         else:
             return json.dumps({
-                'textToSpeech': '聞こえないよ？'
+                'textToSpeech': '聞こえないよ？もう一度遊びますか？'
+                #'textToSpeech': 'にゃ' #上書きされちゃう
             }, indent=2, separators=(',', ': '), ensure_ascii=False)
 
 
@@ -34,10 +35,34 @@ def action():
         wordsState = []
         gameEnd = True
         return json.dumps({
-            'textToSpeech': '記事が見つかりませんでした。あなたの負けー。もう一度遊びますか'
+            #しんばる
+            #爆発音
+            'textToSpeech': '<speak><audio src="https://actionproxy-e83f8.firebaseapp.com/ranking.mp3">ドラムロール</audio><audio src="https://actionproxy-e83f8.firebaseapp.com/pop_explosion.mp3">どっかーん</audio>記事が見つかりませんでした。あなたのまけー！もう一度遊びますか</speak>'
+            }, indent=2, separators=(',', ': '), ensure_ascii=False)
+
+    if len(titles) < 5:
+        return json.dumps({
+            'textToSpeech': '<speak><audio src="https://actionproxy-e83f8.firebaseapp.com/ranking.mp3">ドラムロール</audio>記事が{}件見つかりました。今まで言われた単語は{}です。もう爆発寸前ですね。気をつけて！</speak>'.format(len(titles), 'と'.join(wordsState))
         }, indent=2, separators=(',', ': '), ensure_ascii=False)
+
+
+    if len(titles) < 10:
+        return json.dumps({
+            'textToSpeech': '<speak><audio src="https://actionproxy-e83f8.firebaseapp.com/ranking.mp3">ドラムロール</audio>記事が{}件見つかりました。今まで言われた単語は{}です。そろそろ爆発しそうですね。どきどきします。</speak>'.format(len(titles), 'と'.join(wordsState))
+        }, indent=2, separators=(',', ': '), ensure_ascii=False)
+
+    if len(titles) < 100:
+        return json.dumps({
+            'textToSpeech': '<speak><audio src="https://actionproxy-e83f8.firebaseapp.com/ranking.mp3">ドラムロール</audio>記事が{}件見つかりました。今まで言われた単語は{}です。もうちょっと攻めてください。</speak>'.format(len(titles), 'と'.join(wordsState))
+        }, indent=2, separators=(',', ': '), ensure_ascii=False)
+ 
+    if len(titles) < 500:
+        return json.dumps({
+            'textToSpeech': '<speak><audio src="https://actionproxy-e83f8.firebaseapp.com/ranking.mp3">ドラムロール</audio>記事が{}件見つかりました。今まで言われた単語は{}です。もっといけますよ。</speak>'.format(len(titles), 'と'.join(wordsState))
+        }, indent=2, separators=(',', ': '), ensure_ascii=False)
+    
     return json.dumps({
-        'textToSpeech': '記事が{}件見つかりました。今言われた単語は{}です'.format(len(titles), 'と'.join(wordsState))
+        'textToSpeech': '<speak><audio src="https://actionproxy-e83f8.firebaseapp.com/ranking.mp3">ドラムロール</audio>記事が{}件見つかりました。今まで言われた単語は{}です。まだまだですね。</speak>'.format(len(titles), 'と'.join(wordsState))
     }, indent=2, separators=(',', ': '), ensure_ascii=False)
 
 
@@ -79,3 +104,8 @@ port = 8081
 if 'WPSEARCH_PORT' in os.environ:
     port = int(os.environ['WPSEARCH_PORT'])
 bottle.run(host='0.0.0.0', port=port, reloader=False)
+
+
+
+
+

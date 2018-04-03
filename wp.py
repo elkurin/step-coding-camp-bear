@@ -234,10 +234,10 @@ class Index():
 
                 documentVectors[cand[0]][n] = (1 + math.log(cand[1] / length[cand[0]])) * math.log(self.collection.num_documents() / len(cands))
 
-        defaultVector.append(numpy.sum(defaultVector) / len(terms))
+        defaultVector.append(numpy.sum(defaultVector) * 2 / len(terms))
         for title in documentVectors.keys():
             if title in ngrams_list:
-                documentVectors[title][len(terms)] = numpy.sum(defaultVector) / len(terms)
+                documentVectors[title][len(terms)] = numpy.sum(defaultVector) * 2 / len(terms)
 
         return self.returnBestTitleWithSorting(documentVectors, defaultVector)
 
